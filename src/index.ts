@@ -1,7 +1,27 @@
 import { checkComplete, checkCountryBalances } from "./checks";
 import { EXCHANGE_SUM } from "./constants";
 import { initCitiesNeighbors, initCities, initCitiesBalances } from "./init";
-import { Case, DiffusionResult } from "./types";
+import { Case, City, DiffusionResult } from "./types";
+
+const initCache = (city: City, country: string, exchangeSum: number) => {
+  for (const neighbor of city.neighbors!) {
+    if (neighbor.cache![country] === undefined) {
+      neighbor.cache![country] = 0;
+    }
+
+    neighbor.cache![country] += exchangeSum;
+  }
+};
+
+const clearCache = (cities: City[]) => {
+  for (const city of cities) {
+    for (const [country, balance] of Object.entries(city.cache!)) {
+      city.balances![country] += balance;
+    }
+
+    city.cache = {};
+  }
+};
 
 const performIteration = ({ cities }: Case) => {
   for (const city of cities) {
@@ -15,36 +35,24 @@ const performIteration = ({ cities }: Case) => {
 
       city.balances![country] -= allAmount;
 
-      for (const neighbor of city.neighbors!) {
-        if (neighbor.cache![country] === undefined) {
-          neighbor.cache![country] = 0;
-        }
-
-        neighbor.cache![country] += exchangeSum;
-      }
+      initCache(city, country, exchangeSum);
     }
   }
 
-  for (const city of cities) {
-    for (const [country, balance] of Object.entries(city.cache!)) {
-      city.balances![country] += balance;
-    }
-
-    city.cache = {};
-  }
+  clearCache(cities);
 };
 
 export const solveEuroDiffusion = (currentCase: Case) => {
   let result: DiffusionResult = {};
 
-  for (const country of Object.keys(currentCase.countries)) {
-    result[country] = NaN;
-  }
-
   if (Object.values(currentCase.countries).length === 1) {
     result[Object.values(currentCase.countries)[0].name] = 0;
 
     return result;
+  }
+
+  for (const country of Object.keys(currentCase.countries)) {
+    result[country] = NaN;
   }
 
   initCities(currentCase);
